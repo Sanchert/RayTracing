@@ -14,8 +14,9 @@ const int REFRACTION = 3;
 
 const int DIFFUSE_REFLECTION = 1;
 const int MIRROR_REFLECTION = 2;
+const int REFRACT_REFLECTION = 3;
 
-const vec3 Unit = vec3(0.0, 0.0, 1.0);
+const vec3 Unit = vec3(1.0, 1.0, 1.0);
 
 #define MAX_SIZE 64
 
@@ -53,11 +54,7 @@ struct SIntersection
 	float Time;
 	vec3 Point;
 	vec3 Normal;
-	vec3 Color;
-	vec4 LightCoeffs;
-	float ReflectionCoef;
-	float RefractionCoef;
-	int MaterialType;
+	int MaterialIdx;
 };
 
 struct SCamera
@@ -189,7 +186,7 @@ void initializeDefaultScene(out STriangle triangles[12], out SSphere spheres[2])
 	
 	spheres[0].Center = vec3(3.5, 1.0, 2.0);
 	spheres[0].Radius = 1.0;
-	spheres[0].MaterialIdx = 2;
+	spheres[0].MaterialIdx = 0;
 }
 
 void initializeDefaultLightMaterials(out SLight light, out SMaterial materials[6])
@@ -217,7 +214,7 @@ void initializeDefaultLightMaterials(out SLight light, out SMaterial materials[6
 	materials[2].Color = vec3(1.0, 1.0, 1.0);
 	materials[2].LightCoeffs = vec4(lightCoefs);
 	materials[2].ReflectionCoef = 0.875;
-	materials[2].RefractionCoef = 1.0;
+	materials[2].RefractionCoef = 1.3;
 	materials[2].MaterialType = REFLECTION;
 	
 	/* GREEN */
@@ -328,17 +325,12 @@ bool Raytrace ( SRay ray,
 				intersect.Time = test;
 				intersect.Point = ray.Origin + ray.Direction * test;
 				intersect.Normal = normalize ( intersect.Point - spheres[i].Center );
-				intersect.Color = materials[sphere.MaterialIdx].Color;
-				intersect.LightCoeffs = materials[sphere.MaterialIdx].LightCoeffs;
-				intersect.ReflectionCoef = materials[sphere.MaterialIdx].ReflectionCoef;
-				intersect.RefractionCoef = materials[sphere.MaterialIdx].RefractionCoef;
-				intersect.MaterialType = materials[sphere.MaterialIdx].MaterialType;
-			
+				intersect.MaterialIdx = sphere.MaterialIdx;
 				result = true;
 			}
 		}
 	}
-	for(int i = 0; i < 10; i++)
+	for(int i = 0; i < 1; i++)
 	{
 		STriangle triangle = triangles[i];
 		if(IntersectTriangle(ray, triangle.v1, triangle.v2, triangle.v3, start, final, test))
@@ -348,12 +340,7 @@ bool Raytrace ( SRay ray,
 				intersect.Time			 = test;
 				intersect.Point			 = ray.Origin + ray.Direction * test;
 				intersect.Normal		 = normalize(cross(triangle.v1 - triangle.v2, triangle.v3 - triangle.v2));
-				intersect.Color			 = materials[triangle.MaterialIdx].Color;
-				intersect.LightCoeffs	 = materials[triangle.MaterialIdx].LightCoeffs;
-				intersect.ReflectionCoef = materials[triangle.MaterialIdx].ReflectionCoef;
-				intersect.RefractionCoef = materials[triangle.MaterialIdx].RefractionCoef;
-				intersect.MaterialType	 = materials[triangle.MaterialIdx].MaterialType;
-			
+				intersect.MaterialIdx    = triangle.MaterialIdx; 
 				result = true;
 			}
 		}
@@ -386,10 +373,10 @@ vec3 Phong ( SIntersection intersect, SLight currLight, float shadow)
 	float diffuse = max(dot(light, intersect.Normal), 0.0);
 	vec3 view = normalize(uCamera.Position - intersect.Point);
 	vec3 reflected = reflect( -view, intersect.Normal );
-	float specular = pow(max(dot(reflected, light), 0.0), intersect.LightCoeffs.w);
-	return intersect.LightCoeffs.x * intersect.Color +
-		   intersect.LightCoeffs.y * diffuse * intersect.Color * shadow +
-		   intersect.LightCoeffs.z * specular * Unit;
+	float specular = pow(max(dot(reflected, light), 0.0), materials[intersect.MaterialIdx].LightCoeffs.w);
+	return materials[intersect.MaterialIdx].LightCoeffs.x * materials[intersect.MaterialIdx].Color +
+		   materials[intersect.MaterialIdx].LightCoeffs.y * diffuse * materials[intersect.MaterialIdx].Color * shadow +
+		   materials[intersect.MaterialIdx].LightCoeffs.z * specular * Unit;
 }
 
 SRay GenerateRay ( SCamera uCamera )
@@ -442,7 +429,7 @@ void main ( void )
 		if (Raytrace(ray, start, final, intersect))
 		{
 			
-			switch(intersect.MaterialType)
+			switch(materials[intersect.MaterialIdx].MaterialType)
 			{
 				case DIFFUSE_REFLECTION:
 				{
@@ -452,18 +439,22 @@ void main ( void )
 				}
 				case MIRROR_REFLECTION:
 				{
-					if(intersect.ReflectionCoef < 1)
+					if(materials[intersect.MaterialIdx].ReflectionCoef < 1)
 					{
-						float contribution = trRay.contribution * (1 - intersect.ReflectionCoef);
+						float contribution = trRay.contribution * (1 - materials[intersect.MaterialIdx].ReflectionCoef);
 						shadow = Shadow(uLight, intersect);
 						resultColor += contribution * Phong(intersect, uLight, shadow);
 					}
 					vec3 reflectDirection = reflect(ray.Direction, intersect.Normal);
 					
-					float contribution = trRay.contribution * intersect.ReflectionCoef;
+					float contribution = trRay.contribution * materials[intersect.MaterialIdx].ReflectionCoef;
 					STracingRay reflectRay = STracingRay(SRay(intersect.Point + reflectDirection * EPSILON, reflectDirection), contribution, trRay.depth + 1);
 					push(myStack, reflectRay);
 					break;
+				}
+				case REFRACT_REFLECTION:
+				{
+					break; 
 				}
 			}
 		}
