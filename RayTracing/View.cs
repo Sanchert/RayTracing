@@ -22,7 +22,6 @@ namespace RayTracing
         private static readonly int attribute_vpos;
         private static readonly int uniform_pos;
         private static readonly int uniform_aspect;
-        private static readonly int uniform_color;
         private static int vbo_position;
         private static Vector3[] vertdata = new Vector3[] {
             new Vector3(-1f, -1f, 0f),
@@ -76,8 +75,7 @@ namespace RayTracing
             };
             GL.GenBuffers(1, out vbo_position);
             GL.BindBuffer(BufferTarget.ArrayBuffer, vbo_position);
-            GL.BufferData<Vector3>(BufferTarget.ArrayBuffer, (IntPtr)(vertdata.Length *
-            Vector3.SizeInBytes), vertdata, BufferUsageHint.StaticDraw);
+            GL.BufferData<Vector3>(BufferTarget.ArrayBuffer, (IntPtr)(vertdata.Length * Vector3.SizeInBytes), vertdata, BufferUsageHint.StaticDraw);
             GL.VertexAttribPointer(attribute_vpos, 3, VertexAttribPointerType.Float, false, 0, 0);
             GL.Uniform3(uniform_pos, campos);
             GL.Uniform1(uniform_aspect, aspect);
