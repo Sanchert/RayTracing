@@ -2,8 +2,8 @@
  
  #define EPSILON 0.01f
  #define BIG 100000.0
- #define MAX_SIZE 64 
- #define MAX_DEPTH 25
+ #define MAX_SIZE 28  // работа зависит от размера стека, а не от глубины трассировки?..
+ #define MAX_DEPTH 25 // ...
 
  out vec4 FragColor;
  in vec3 glPosition;
@@ -37,12 +37,12 @@
  
  struct SMaterial
  {
- 	vec3 Color; //diffuse color
- 	vec4 LightCoeffs; // ambient, diffuse and specular coeffs
- 	float ReflectionCoef;
- 	float RefractionCoef;
- 	int MaterialType; // 0 - non-reflection, 1 - mirror
-    float IOR;
+ 	vec3 Color;             // diffuse color - RGB
+ 	vec4 LightCoeffs;       // ambient, diffuse and specular coeffs
+ 	float ReflectionCoef;   // чем больше, тем меньше влияние собственного цвета метериала
+ 	float RefractionCoef;   // чем больше, тем больше влияние собственного цвета метериала
+ 	int MaterialType;       // 1) non-reflection, 2) mirror, 3) glass
+    float IOR;              // Index Of Refraction
  };
  
  struct SIntersection
@@ -98,7 +98,7 @@
  SMaterial materials[6];
  float Unit = 1.0;
  
- // Structure to represent the stack
+ /** STACK **/
  struct Stack {
      STracingRay items[MAX_SIZE];
      int top;
@@ -132,6 +132,7 @@
  	}
  }
  
+ /** OBJECTS **/
  void initializeDefaultScene()
  {
  	/** TRIANGLES **/
@@ -185,13 +186,13 @@
  	triangles[9].v3 = vec3(-5.0,-5.0, 5.0);
  	triangles[9].MaterialIdx = 0;
 
- 	triangles[10].v1 = vec3(-3.0,-3.0,-2.0);
- 	triangles[10].v2 = vec3( 0.0,-3.0,-2.0);
- 	triangles[10].v3 = vec3(-3.0, 3.0,-2.0);
+ 	triangles[10].v1 = vec3(-3.0,-3.0,-4.0);
+ 	triangles[10].v2 = vec3( 0.0,-3.0,-4.0);
+ 	triangles[10].v3 = vec3(-3.0, 3.0,-4.0);
  	triangles[10].MaterialIdx = 1;
- 	triangles[11].v1 = vec3( 0.0, 3.0,-2.0);
- 	triangles[11].v2 = vec3(-3.0, 3.0,-2.0);
- 	triangles[11].v3 = vec3( 0.0,-3.0,-2.0);
+ 	triangles[11].v1 = vec3( 0.0, 3.0,-4.0);
+ 	triangles[11].v2 = vec3(-3.0, 3.0,-4.0);
+ 	triangles[11].v3 = vec3( 0.0,-3.0,-4.0);
  	triangles[11].MaterialIdx = 1;
   
  	/** SPHERES **/
@@ -203,34 +204,35 @@
  	spheres[0].Radius = 1.0;
  	spheres[0].MaterialIdx = 2;
  }
- 
+
+ /** MATERIALS & LIGHT **/
  void initializeDefaultLightMaterials()
  {
  	
  	uLight.Position = vec3(0.0, 2.0, -8.0);
  	
- 	vec4 lightCoefs = vec4(0.4,0.9,0.0,512.0);
- 
+ 	vec4 lightCoefs = vec4(0.4, 0.9, 0.2, 512.0);
+    
  	/* WHITE - DIFFUSE	*/
  	materials[0].Color = vec3(1.0, 1.0, 1.0);
  	materials[0].LightCoeffs = vec4(lightCoefs);
  	materials[0].ReflectionCoef = 0.5;
  	materials[0].RefractionCoef = 1.0;
  	materials[0].MaterialType = DIFFUSE;
-    materials[0].IOR = 1.4;	
+    materials[0].IOR = 1.0;	
  	
-    /* PURPLE */
+    /* WHITE - REFRACTION */
  	materials[1].Color = vec3(1.0, 1.0, 1.0);
  	materials[1].LightCoeffs = vec4(lightCoefs);
  	materials[1].ReflectionCoef = 0.2;
- 	materials[1].RefractionCoef = 0.7;
+ 	materials[1].RefractionCoef = 0.8;
  	materials[1].MaterialType = REFRACTION;
  	materials[1].IOR = 1.5;
 
  	/* WHITE REFLECTION */
  	materials[2].Color = vec3(1.0, 1.0, 1.0);
  	materials[2].LightCoeffs = vec4(lightCoefs);
- 	materials[2].ReflectionCoef = 0.875;
+ 	materials[2].ReflectionCoef = 0.8;
  	materials[2].RefractionCoef = 1.0;
  	materials[2].MaterialType = REFLECTION;
  	materials[2].IOR = 1.0;
@@ -239,9 +241,9 @@
  	materials[3].Color = vec3(0.1, 1.0, 0.0);
  	materials[3].LightCoeffs = vec4(lightCoefs);
  	materials[3].ReflectionCoef = 0.5;
- 	materials[3].RefractionCoef = 1.0;
+ 	materials[3].RefractionCoef = 1.2;
  	materials[3].MaterialType = DIFFUSE;
- 	materials[3].IOR = 1.4;
+ 	materials[3].IOR = 1.0;
 
  	/* BLUE */
  	materials[4].Color = vec3(0.0, 0.2, 1.0);
@@ -249,15 +251,15 @@
  	materials[4].ReflectionCoef = 0.5;
  	materials[4].RefractionCoef = 1.0;
  	materials[4].MaterialType = DIFFUSE;
- 	materials[4].IOR = 1.4;
+ 	materials[4].IOR = 1.0;
 
  	/* RED */
- 	materials[5].Color = vec3(1.0, 0.0, 0.0);
+ 	materials[5].Color = vec3(1.0, 0.1, 0.1);
  	materials[5].LightCoeffs = vec4(lightCoefs);
  	materials[5].ReflectionCoef = 0.5;
  	materials[5].RefractionCoef = 1.0;
  	materials[5].MaterialType = DIFFUSE;
-    materials[5].IOR = 1.4;
+    materials[5].IOR = 1.0;
  }
  
  bool IntersectSphere (  SSphere sphere, SRay ray, float start, float final, out float time)
@@ -334,7 +336,7 @@
  	bool result = false;
  	float test = start;
  	intersect.Time = BIG;
- 	for(int i = 0; i < 0; i++)
+ 	for(int i = 0; i < 2; i++)
  	{
  		SSphere sphere = spheres[i];
  		if( IntersectSphere (sphere, ray, start, final, test ))
