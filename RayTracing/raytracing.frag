@@ -3,7 +3,8 @@
  #define EPSILON 0.01f
  #define BIG 100000.0
  #define MAX_SIZE 64 
- 
+ #define MAX_DEPTH 63
+
  out vec4 FragColor;
  in vec3 glPosition;
  
@@ -419,9 +420,8 @@
  	push(myStack, trRay);
  	while(!isEmpty(myStack))
  	{
- 		
  		STracingRay trRay = pop(myStack);
- 		ray = trRay.ray;
+        ray = trRay.ray;
  		
  		final = BIG;
  		if (Raytrace(ray, start, final, intersect))
@@ -446,9 +446,12 @@
  					vec3 reflectDirection = reflect(ray.Direction, intersect.Normal);
  					
  					float contribution = trRay.contribution * intersect.ReflectionCoef;
- 					STracingRay reflectRay = STracingRay(SRay(intersect.Point + reflectDirection * EPSILON, reflectDirection), contribution, trRay.depth + 1);
- 					push(myStack, reflectRay);
- 					break;
+ 					if (trRay.depth < MAX_DEPTH) {
+        
+                        STracingRay reflectRay = STracingRay(SRay(intersect.Point + reflectDirection * EPSILON, reflectDirection), contribution, trRay.depth + 1);
+ 					    push(myStack, reflectRay);
+                    }
+                    break;
  				}
  			}
  		}
