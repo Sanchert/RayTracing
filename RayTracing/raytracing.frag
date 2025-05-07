@@ -3,7 +3,7 @@
  #define EPSILON 0.01f
  #define BIG 100000.0
  #define MAX_SIZE 64 
- #define MAX_DEPTH 63
+ #define MAX_DEPTH 25
 
  out vec4 FragColor;
  in vec3 glPosition;
@@ -42,6 +42,7 @@
  	float ReflectionCoef;
  	float RefractionCoef;
  	int MaterialType; // 0 - non-reflection, 1 - mirror
+    float IOR;
  };
  
  struct SIntersection
@@ -54,6 +55,7 @@
  	float ReflectionCoef;
  	float RefractionCoef;
  	int MaterialType;
+    float IOR;
  };
  
  struct SCamera
@@ -182,7 +184,16 @@
  	triangles[9].v2 = vec3( 5.0,-5.0, 5.0);
  	triangles[9].v3 = vec3(-5.0,-5.0, 5.0);
  	triangles[9].MaterialIdx = 0;
- 
+
+ 	triangles[10].v1 = vec3(-3.0,-3.0,-2.0);
+ 	triangles[10].v2 = vec3( 0.0,-3.0,-2.0);
+ 	triangles[10].v3 = vec3(-3.0, 3.0,-2.0);
+ 	triangles[10].MaterialIdx = 1;
+ 	triangles[11].v1 = vec3( 0.0, 3.0,-2.0);
+ 	triangles[11].v2 = vec3(-3.0, 3.0,-2.0);
+ 	triangles[11].v3 = vec3( 0.0,-3.0,-2.0);
+ 	triangles[11].MaterialIdx = 1;
+  
  	/** SPHERES **/
  	spheres[1].Center = vec3(-1.0,-1.0,-2.0);
  	spheres[1].Radius = 2.0;
@@ -206,41 +217,47 @@
  	materials[0].ReflectionCoef = 0.5;
  	materials[0].RefractionCoef = 1.0;
  	materials[0].MaterialType = DIFFUSE;
+    materials[0].IOR = 1.4;	
  	
- 	/* PURPLE */
- 	materials[1].Color = vec3(1.0, 0.0, 1.0);
+    /* PURPLE */
+ 	materials[1].Color = vec3(1.0, 1.0, 1.0);
  	materials[1].LightCoeffs = vec4(lightCoefs);
- 	materials[1].ReflectionCoef = 0.5;
- 	materials[1].RefractionCoef = 1.0;
- 	materials[1].MaterialType = DIFFUSE;
- 	
+ 	materials[1].ReflectionCoef = 0.2;
+ 	materials[1].RefractionCoef = 0.7;
+ 	materials[1].MaterialType = REFRACTION;
+ 	materials[1].IOR = 1.5;
+
  	/* WHITE REFLECTION */
  	materials[2].Color = vec3(1.0, 1.0, 1.0);
  	materials[2].LightCoeffs = vec4(lightCoefs);
  	materials[2].ReflectionCoef = 0.875;
  	materials[2].RefractionCoef = 1.0;
  	materials[2].MaterialType = REFLECTION;
- 	
+ 	materials[2].IOR = 1.0;
+
  	/* GREEN */
  	materials[3].Color = vec3(0.1, 1.0, 0.0);
  	materials[3].LightCoeffs = vec4(lightCoefs);
  	materials[3].ReflectionCoef = 0.5;
  	materials[3].RefractionCoef = 1.0;
  	materials[3].MaterialType = DIFFUSE;
- 	
+ 	materials[3].IOR = 1.4;
+
  	/* BLUE */
  	materials[4].Color = vec3(0.0, 0.2, 1.0);
  	materials[4].LightCoeffs = vec4(lightCoefs);
  	materials[4].ReflectionCoef = 0.5;
  	materials[4].RefractionCoef = 1.0;
  	materials[4].MaterialType = DIFFUSE;
- 	
+ 	materials[4].IOR = 1.4;
+
  	/* RED */
  	materials[5].Color = vec3(1.0, 0.0, 0.0);
  	materials[5].LightCoeffs = vec4(lightCoefs);
  	materials[5].ReflectionCoef = 0.5;
  	materials[5].RefractionCoef = 1.0;
  	materials[5].MaterialType = DIFFUSE;
+    materials[5].IOR = 1.4;
  }
  
  bool IntersectSphere (  SSphere sphere, SRay ray, float start, float final, out float time)
@@ -312,34 +329,32 @@
  	return true;
  }
  
- bool Raytrace ( SRay ray,
- 				float start, float final,
- 				inout SIntersection intersect)
+ bool Raytrace ( SRay ray, float start, float final, inout SIntersection intersect)
  {
  	bool result = false;
  	float test = start;
  	intersect.Time = BIG;
- 	for(int i = 0; i < 2; i++)
+ 	for(int i = 0; i < 0; i++)
  	{
  		SSphere sphere = spheres[i];
  		if( IntersectSphere (sphere, ray, start, final, test ))
  		{
  			if (test >= start && test <= final && test >= 0.0 && test < intersect.Time)
  			{
- 				intersect.Time = test;
- 				intersect.Point = ray.Origin + ray.Direction * test;
- 				intersect.Normal = normalize ( intersect.Point - spheres[i].Center );
- 				intersect.Color = materials[sphere.MaterialIdx].Color;
- 				intersect.LightCoeffs = materials[sphere.MaterialIdx].LightCoeffs;
+ 				intersect.Time           = test;
+ 				intersect.Point          = ray.Origin + ray.Direction * test;
+ 				intersect.Normal         = normalize ( intersect.Point - spheres[i].Center );
+ 				intersect.Color          = materials[sphere.MaterialIdx].Color;
+ 				intersect.LightCoeffs    = materials[sphere.MaterialIdx].LightCoeffs;
  				intersect.ReflectionCoef = materials[sphere.MaterialIdx].ReflectionCoef;
  				intersect.RefractionCoef = materials[sphere.MaterialIdx].RefractionCoef;
- 				intersect.MaterialType = materials[sphere.MaterialIdx].MaterialType;
- 			
+ 				intersect.MaterialType   = materials[sphere.MaterialIdx].MaterialType;
+ 			    intersect.IOR            = materials[sphere.MaterialIdx].IOR;
  				result = true;
  			}
  		}
  	}
- 	for(int i = 0; i < 10; i++)
+ 	for(int i = 0; i < 12; i++)
  	{
  		STriangle triangle = triangles[i];
  		if(IntersectTriangle(ray, triangle.v1, triangle.v2, triangle.v3, start, final, test))
@@ -354,7 +369,7 @@
  				intersect.ReflectionCoef = materials[triangle.MaterialIdx].ReflectionCoef;
  				intersect.RefractionCoef = materials[triangle.MaterialIdx].RefractionCoef;
  				intersect.MaterialType	 = materials[triangle.MaterialIdx].MaterialType;
- 			
+ 			    intersect.IOR            = materials[triangle.MaterialIdx].IOR;
  				result = true;
  			}
  		}
@@ -422,7 +437,8 @@
  	{
  		STracingRay trRay = pop(myStack);
         ray = trRay.ray;
- 		
+ 		if (trRay.depth > MAX_DEPTH)
+            break;
  		final = BIG;
  		if (Raytrace(ray, start, final, intersect))
  		{
@@ -453,6 +469,22 @@
                     }
                     break;
  				}
+
+                case REFRACTION:
+                {
+                    if (intersect.RefractionCoef < 1)
+                    {
+                        float contribution = trRay.contribution * (1 - intersect.RefractionCoef);
+                        float shadow = Shadow(uLight, intersect);
+                        resultColor += contribution * Phong(intersect, uLight, shadow);
+                    }
+                    vec3 refractDirection = refract(ray.Direction, intersect.Normal, intersect.IOR);
+                    
+                    float contribution = trRay.contribution * intersect.RefractionCoef;
+                    STracingRay refractRay = STracingRay(SRay(intersect.Point + refractDirection * EPSILON, refractDirection), contribution, trRay.depth + 1);
+                    push(myStack, refractRay);
+                    break;
+                }
  			}
  		}
  	}
